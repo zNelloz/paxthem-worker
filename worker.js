@@ -277,111 +277,96 @@ async function syncOdds() {
 
 
   await processLinks(
-    links,
+  links,
 
-    async ({
-      index,
-      total,
-      url,
-      result
-    }) => {
+  async ({
+    index,
+    total,
+    url,
+    result
+  }) => {
 
-      if (
-        !result.ok
-      ) {
+    const current = index + 1;
 
-        failed++;
+    if (!result.ok) {
 
-        if (
-          result.status !== 400 &&
-          result.status !== 404
-        ) {
-
-          log(
-            `[PAXTHEM][HTTP] ` +
-            `status=${result.status} ` +
-            `${url}`
-          );
-
-        }
-
-        return;
-
-      }
-
-
-      const normalized =
-        normalizeTournamentResponse(
-
-          result.data,
-
-          lookups.marketLookup,
-
-          lookups.selectionLookup
-
-        );
-
+      failed++;
 
       if (
-        !normalized
-          .events
-          .length
-      ) {
-        return;
-      }
-
-
-      successful++;
-
-
-      totalOdds +=
-        normalized
-          .odds
-          .length;
-
-
-      await batch(
-        db.upsertEvents,
-        normalized.events
-      );
-
-
-      await batch(
-        db.upsertEventMarkets,
-        normalized.eventMarkets
-      );
-
-
-      await batch(
-        db.upsertOdds,
-        normalized.odds
-      );
-
-
-      if (
-        (index + 1) %
-        50 === 0
+        current % 25 === 0 ||
+        result.status === 429 ||
+        result.status >= 500 ||
+        result.status == null
       ) {
 
         log(
-
-          `[PAXTHEM][HTTP] ` +
-
-          `${index + 1}/${total} ` +
-
-          `success=${successful} ` +
-
-          `failed=${failed} ` +
-
-          `odds=${totalOdds}`
-
+          `[PAXTHEM][HTTP] ${current}/${total} ` +
+          `FAILED status=${result.status ?? "TIMEOUT"} ` +
+          `success=${successful} failed=${failed} odds=${totalOdds}`
         );
 
       }
 
+      return;
     }
 
-  );
+
+    const normalized =
+      normalizeTournamentResponse(
+        result.data,
+        lookups.marketLookup,
+        lookups.selectionLookup
+      );
+
+
+    if (!normalized.events.length) {
+
+      if (current % 25 === 0) {
+
+        log(
+          `[PAXTHEM][HTTP] ${current}/${total} ` +
+          `EMPTY success=${successful} failed=${failed} odds=${totalOdds}`
+        );
+
+      }
+
+      return;
+    }
+
+
+    successful++;
+
+    totalOdds +=
+      normalized.odds.length;
+
+
+    await batch(
+      db.upsertEvents,
+      normalized.events
+    );
+
+    await batch(
+      db.upsertEventMarkets,
+      normalized.eventMarkets
+    );
+
+    await batch(
+      db.upsertOdds,
+      normalized.odds
+    );
+
+
+    if (current % 25 === 0) {
+
+      log(
+        `[PAXTHEM][HTTP] ${current}/${total} ` +
+        `OK success=${successful} failed=${failed} odds=${totalOdds}`
+      );
+
+    }
+
+  }
+);
 
 
   await db.setStatus(
