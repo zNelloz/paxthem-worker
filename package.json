@@ -7,6 +7,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node worker.js",
+    "discovery": "node discovery.js",
     "check": "node --check worker.js && node --check db.js && node --check normalizer.js && node --check paxthem-http.js && node --check paxthem-ws.js"
   },
   "engines": {
@@ -15,6 +16,6 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "mysql2": "^3.14.0",
-    "ws": "^8.18.0"
+    "ws": "^8.21.3"
   }
 }
