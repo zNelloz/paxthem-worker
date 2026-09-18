@@ -63,7 +63,7 @@ class PaxthemWS {
 
     const key =
       process.env
-        .PAXTHEM_WS_APP_KEY;
+        .PAXTHEM_WS_KEY;
 
     if (!key) {
 
